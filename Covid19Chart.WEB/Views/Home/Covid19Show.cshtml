@@ -1,0 +1,63 @@
+﻿
+<div id="curve_chart" style="width: 1450px; height: 600px"></div>
+
+
+<script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+
+<script type="text/javascript">
+
+    var covidChartList = new Array();
+    covidChartList.push(["Date", "Munich", "Paris", "London", "Istanbul", "Tokyo"])
+
+    //apiye burada bağlandı web
+    var connection = new signalR.HubConnectionBuilder().withUrl("https://localhost:44343/CovidHub").build(); //dinleyeceğim api portu ve startupdaki hub name
+
+    connection.start().then(() => { //start yaptık
+
+        connection.invoke("GetCovidList"); //serverdaki bu metodu tetikle
+
+    }).catch((err) => { //hata alımında
+        console.log(err);
+    });
+
+    connection.on("ReceiveCovidList", (covidList) => {
+        //console.log(covidList);
+
+        covidChartList = covidChartList.splice(0, 1); // her seferinde ilk başlık datası hariç temizle
+
+        covidList.forEach((item) => { //db den gelen dataları liste pushladık
+            covidChartList.push([item.covidDate, item.counts[0], item.counts[1], item.counts[2], item.counts[3], item.counts[4]])
+        });
+
+        google.charts.load('current', { 'packages': ['corechart'] }); //her yeni data saveCovid ile geldiğinde yine bu metod çağıralacağı için biz burada chartları her seferinde yeniden oluşturalım
+        google.charts.setOnLoadCallback(drawChart);
+
+    }) //subscribe olsun mesajı alsın
+
+
+    function drawChart() {
+        var data = google.visualization.arrayToDataTable(
+            covidChartList
+            //[
+            //['Year', 'Sales', 'Expenses'],
+            //['2004', 1000, 400],
+            //['2005', 1170, 460],
+            //['2006', 660, 1120],
+            //['2007', 1030, 540]
+            //]
+        );
+
+        var options = {
+            title: 'Covid19 Chart',
+            curveType: 'function', //'none', farklı gösterim için
+            legend: { position: 'bottom' }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
+
+        chart.draw(data, options);
+    }
+
+</script>
